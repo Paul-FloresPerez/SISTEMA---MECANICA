@@ -2,7 +2,7 @@
 
 ## Alcance y decisiones
 
-Esta propuesta transforma el estado local actual (clientes, motos, reparaciones, inventario, ventas, compras, gastos y configuración) en PostgreSQL con Drizzle ORM. Es un diseño de referencia: **no agrega dependencias, no crea archivos de Drizzle, no genera migraciones y no se conecta a Neon**.
+Esta propuesta transforma el estado local actual (clientes, motos, reparaciones, inventario, ventas, compras, gastos y configuración) en PostgreSQL con Drizzle ORM. La estructura se encuentra implementada en `src/db/schema.ts`, los clientes de servidor en `src/db/client.ts` y la primera migración se versiona en `drizzle/`. **La migración fue generada y validada localmente, pero no se ejecutó en Neon ni en ninguna base de datos.**
 
 La primera instalación tendrá una organización y un taller. Sin embargo, las claves y las restricciones se diseñan desde el inicio para aislar negocios futuros (`organization_id`) y, después, permitir varios locales por negocio (`workshop_id`). Ninguna tabla de negocio debe depender implícitamente de un único taller global.
 
@@ -29,8 +29,9 @@ Neon recomienda el pooler para cargas serverless y conexiones por solicitud; su 
 Cuando se implemente:
 
 ```text
-src/db/client.ts             -> Drizzle + DATABASE_URL (aplicación)
-src/db/schema/*.ts           -> tablas, enums y relations de Drizzle
+src/db/env.ts                -> valida DATABASE_URL sólo en el servidor
+src/db/client.ts             -> dbQuery (HTTP) + dbTx (WebSocket)
+src/db/schema.ts             -> tablas, enums y relaciones mediante claves foráneas de Drizzle
 drizzle.config.ts            -> DATABASE_URL_UNPOOLED (Drizzle Kit)
 drizzle/                     -> SQL generado y snapshots, versionados
 ```
@@ -168,7 +169,7 @@ La orden puede ingresar sólo con cliente, moto y problema; repuestos, gastos, d
 | --- | --- | --- |
 | `payments` | tenant, dirección (`inbound`/`outbound`), método, monto, fecha, referencia externa, estado (`pending`, `confirmed`, `voided`, `reversed`), nota, `idempotency_key` | Es el movimiento de dinero. `inbound` cobra ventas/reparaciones o recibe devolución de proveedor; `outbound` paga compras/gastos o reembolsa clientes. |
 | `payment_allocations` | `payment_id`, monto aplicado, uno de: reparación, venta, compra o gasto operativo | `CHECK` de exactamente un documento destino. Permite pagos parciales y un pago repartido. La suma confirmada de asignaciones debe igualar el pago confirmado. |
-| `payment_methods` | tenant, código, etiqueta, activo, datos de cuenta cifrables | configura efectivo, Yape/Plin, tarjeta y transferencia sin almacenar secretos en texto plano. |
+| `payment_methods` | tenant, código, etiqueta, activo, referencia de cuenta | configura sólo efectivo, Yape, Plin y transferencia. El registro es manual: no hay POS, pasarela, API bancaria ni secreto de proveedor. |
 | `cash_movements` (fase posterior) | caja, tipo, monto, origen de pago/gasto, fecha | necesario si se gestiona arqueo de caja; no es requisito de la primera migración. |
 
 Las vistas de rentabilidad se derivan, no se editan:
@@ -228,12 +229,10 @@ La migración posterior debe importar los datos demo una sola vez mediante un sc
 
 ## Implementación futura, en orden seguro
 
-1. Añadir Drizzle, `@neondatabase/serverless`, `ws`/`bufferutil` para el cliente transaccional y Drizzle Kit, sin cambiar componentes cliente todavía.
-2. Declarar enums/tablas en módulos de esquema y relations de Drizzle; separar `dbQuery` (HTTP) de `dbTx` (WebSocket) y añadir `drizzle.config.ts` que use exclusivamente `DATABASE_URL_UNPOOLED`.
-3. Revisar el SQL generado, restricciones, índices y políticas de tenant en un entorno Neon de desarrollo.
-4. Aplicar la primera migración manualmente y registrar el procedimiento de rollback. No ejecutar `push` sobre producción.
-5. Implementar repositorios y servicios de servidor con `DATABASE_URL`; migrar primero clientes/motos y catálogo, luego inventario, reparaciones y finalmente ventas/finanzas.
-6. Reemplazar el contexto demo por llamadas a servidor conservando las validaciones de interfaz; agregar pruebas transaccionales para concurrencia de stock, anulaciones, devoluciones y pagos duplicados.
+1. Completado: añadir Drizzle, `@neondatabase/serverless`, `ws`, Drizzle Kit, esquema, clientes `dbQuery`/`dbTx` y la migración inicial. Validar con `npm run db:check`; `npm run db:generate` regenera SQL sin aplicarlo.
+2. Revisar la migración inicial en un entorno Neon de desarrollo y registrar el procedimiento de rollback. No ejecutar `push` ni aplicar la migración sobre producción sin aprobación explícita.
+3. Implementar repositorios y servicios de servidor con `DATABASE_URL`; migrar primero clientes/motos y catálogo, luego inventario, reparaciones y finalmente ventas/finanzas.
+4. Reemplazar el contexto demo por llamadas a servidor conservando las validaciones de interfaz; agregar pruebas transaccionales para concurrencia de stock, anulaciones, devoluciones y pagos duplicados.
 
 ## Fuentes técnicas
 

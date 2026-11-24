@@ -230,6 +230,7 @@ export const products = pgTable('products', {
   updatedAt: updatedAt(),
 }, (table) => [
   unique('products_organization_id_id_unique').on(table.organizationId, table.id),
+  unique('products_workshop_id_id_unique').on(table.workshopId, table.id),
   unique('products_workshop_sku_unique').on(table.workshopId, table.sku),
   index('products_workshop_active_idx').on(table.workshopId, table.name).where(sql`${table.isActive}`),
   index('products_category_id_idx').on(table.categoryId),
@@ -247,6 +248,7 @@ export const stockLocations = pgTable('stock_locations', {
   updatedAt: updatedAt(),
 }, (table) => [
   unique('stock_locations_workshop_name_unique').on(table.workshopId, table.name),
+  unique('stock_locations_workshop_id_id_unique').on(table.workshopId, table.id),
   uniqueIndex('stock_locations_one_default_unique').on(table.workshopId).where(sql`${table.isDefault}`),
 ]);
 

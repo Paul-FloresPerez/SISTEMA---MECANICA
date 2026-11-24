@@ -1,0 +1,2 @@
+ALTER TABLE "products" ADD CONSTRAINT "products_workshop_id_id_unique" UNIQUE("workshop_id","id");--> statement-breakpoint
+ALTER TABLE "stock_locations" ADD CONSTRAINT "stock_locations_workshop_id_id_unique" UNIQUE("workshop_id","id");

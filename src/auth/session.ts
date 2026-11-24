@@ -11,7 +11,7 @@ const hashToken = (token: string) => createHash('sha256').update(token).digest('
 export async function getSession() {
   const token = (await cookies()).get(cookieName)?.value;
   if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;
-  const rows = await dbQuery.select({ userId: users.id, name: users.fullName, workshopId: workshops.id, role: memberships.role })
+  const rows = await dbQuery.select({ userId: users.id, name: users.fullName, organizationId: memberships.organizationId, workshopId: workshops.id, role: memberships.role })
     .from(sessions)
     .innerJoin(users, and(eq(users.id, sessions.userId), eq(users.isActive, true)))
     .innerJoin(memberships, and(eq(memberships.userId, sessions.userId), eq(memberships.organizationId, sessions.organizationId), eq(memberships.workshopId, sessions.workshopId), eq(memberships.isActive, true)))

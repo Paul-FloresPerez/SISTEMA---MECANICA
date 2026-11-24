@@ -104,7 +104,7 @@ erDiagram
 | --- | --- | --- |
 | `organizations` | `id`, `name`, `legal_name`, `tax_id`, `default_currency='PEN'`, `timezone='America/Lima'`, auditoría | `tax_id` único cuando exista. Es el límite de tenancy. |
 | `workshops` | `id`, `organization_id`, `name`, dirección, teléfono, correo, horario, `is_active` | único `(organization_id, name)`. Se crea uno para Zona Racing. |
-| `users` | `id`, nombre, correo normalizado, `is_active` | correo único global si hay autenticación compartida. |
+| `users` | `id`, nombre, username normalizado, correo opcional, `is_active` | username único global; correo opcional único cuando se proporciona. |
 | `user_credentials` | `user_id`, `password_hash`, `password_changed_at`, `failed_attempts`, `locked_until` | una fila por usuario local; sólo se persiste el hash Argon2id. |
 | `sessions` | `id`, `user_id`, `token_hash`, taller activo, expiración, revocación, último uso | tokens opacos revocables; índice por hash y expiración. |
 | `memberships` | `organization_id`, `user_id`, `role`, `workshop_id` opcional | único `(organization_id, user_id)`; roles: administrador, jefe_taller, mecánico, caja. Sustituye los miembros demo y permite aislar negocios. |
@@ -206,7 +206,7 @@ Las vistas de rentabilidad se derivan, no se editan:
 
 La primera versión puede resolver autenticación sin introducir SSO, invitaciones públicas ni una plataforma externa:
 
-1. Login por correo y contraseña administrado por el taller; no hay auto-registro público.
+1. Login por nombre de usuario y contraseña administrado por el taller; el correo es opcional y no hay auto-registro público.
 2. `users` contiene identidad y estado; `user_credentials` guarda únicamente `password_hash` Argon2id, fecha de cambio y contador/fecha de bloqueo. Nunca contraseña, token o PIN en texto plano.
 3. `sessions` almacena `token_hash`, `user_id`, organización/taller activo, expiración, revocación y último uso. La cookie contiene un token opaco aleatorio, `HttpOnly`, `Secure`, `SameSite=Lax` y prefijo `__Host-` en producción.
 4. El contexto de cada solicitud se obtiene en el servidor desde la sesión y su `membership`; el cliente nunca decide `organization_id`, `workshop_id` ni rol.

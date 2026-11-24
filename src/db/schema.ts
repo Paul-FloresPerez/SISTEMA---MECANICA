@@ -88,11 +88,16 @@ export const workshops = pgTable('workshops', {
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   fullName: varchar('full_name', { length: 160 }).notNull(),
-  email: varchar('email', { length: 320 }).notNull(),
+  username: varchar('username', { length: 64 }).notNull(),
+  email: varchar('email', { length: 320 }),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
-}, (table) => [uniqueIndex('users_email_unique').on(sql`lower(${table.email})`)]);
+}, (table) => [
+  uniqueIndex('users_username_unique').on(sql`lower(${table.username})`),
+  uniqueIndex('users_email_unique').on(sql`lower(${table.email})`),
+  check('users_username_format_check', sql`${table.username} ~ '^[a-z0-9][a-z0-9._-]{2,63}$'`),
+]);
 
 export const userCredentials = pgTable('user_credentials', {
   userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),

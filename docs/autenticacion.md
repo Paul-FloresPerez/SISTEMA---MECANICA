@@ -6,7 +6,7 @@ El primer administrador se crea una sola vez desde una terminal privada con acce
 npm run auth:create-admin
 ```
 
-El comando solicita nombre, correo y contraseña sin mostrarla. Crea la organización, taller, usuario y membresía en una transacción, y se detiene si ya existe una organización o usuario. No hay registro público. La contraseña debe tener al menos 12 caracteres; guárdala en un gestor de contraseñas. En Vercel configura `DATABASE_URL` como variable de servidor para los entornos que utilicen el acceso.
+El comando solicita nombre, nombre de usuario, correo opcional y contraseña sin mostrarla. El usuario se normaliza a minúsculas, debe tener de 3 a 64 caracteres y admite letras ASCII, números, puntos, guiones y guiones bajos; debe empezar por letra o número. Es único globalmente. Crea la organización, taller, usuario y membresía en una transacción, y se detiene si ya existe una organización o usuario. No hay registro público. La contraseña debe tener al menos 12 caracteres; guárdala en un gestor de contraseñas. En Vercel configura `DATABASE_URL` como variable de servidor para los entornos que utilicen el acceso.
 
 Las contraseñas usan Argon2id. La cookie contiene un token aleatorio, HttpOnly y SameSite=Lax; en producción es Secure y usa el prefijo `__Host-`. La base almacena únicamente el hash del token. La sesión caduca en siete días y cerrar sesión la revoca. Cinco intentos incorrectos bloquean temporalmente la cuenta durante quince minutos.
 

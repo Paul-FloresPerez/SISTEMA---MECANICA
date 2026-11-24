@@ -130,14 +130,14 @@ Una reparación toma un snapshot de cliente, motocicleta, placa y kilometraje de
 | `product_categories` | `id`, `workshop_id`, nombre | único `(workshop_id, normalized_name)`. |
 | `products` | `id`, tenant, `sku`, nombre, marca, categoría, `sale_price`, `min_stock`, `is_active` | SKU único por taller. El costo vigente no es fuente de verdad histórica. |
 | `stock_locations` | `id`, `workshop_id`, nombre, `is_default` | inicialmente una ubicación “Almacén principal”; permite más almacenes después. |
-| `inventory_balances` | `product_id`, `stock_location_id`, `quantity_on_hand`, `inventory_value`, `average_unit_cost`, `version` | PK compuesta. Es una proyección de lectura; se actualiza junto con el movimiento bajo bloqueo de fila. `average_unit_cost = inventory_value / quantity_on_hand` cuando exista saldo. |
-| `inventory_movements` | `id`, tenant, producto, ubicación, `movement_type`, `quantity_delta`, `unit_cost_applied`, `total_cost_applied`, saldo/costo/valor antes y después, motivo, referencia, autor, fecha | append-only. Índices por producto/fecha y referencia. No se borra ni edita: las correcciones son otro movimiento de ajuste o reversión. |
+| `inventory_balances` | `product_id`, `stock_location_id`, `organization_id`, `workshop_id`, `quantity_on_hand`, `inventory_value`, `average_unit_cost`, `version` | PK compuesta por producto/ubicación y FKs compuestas tenant→taller, tenant→producto y taller→ubicación impiden cruces. Proyección bloqueada por fila. |
+| `inventory_movements` | `id`, tenant, producto, ubicación, `movement_type`, `quantity_delta`, `unit_cost_applied`, `total_cost_applied`, saldo/valor antes y después, referencia única por línea de origen, `reverses_movement_id` | append-only; una sola reversión por movimiento fuente. Las líneas de venta/compra/reparación referencian un único movimiento y el índice único evita duplicar el asiento para una línea. |
 
 `movement_type`: `purchase_receipt`, `repair_consumption`, `sale`, `sale_return`, `purchase_return`, `adjustment_in`, `adjustment_out`, `void_reversal`.
 
 Para evitar inconsistencia, `quantity_on_hand` nunca se actualiza sin insertar el movimiento correspondiente. La transacción interactiva bloquea el balance `(product_id, stock_location_id)`, valida que una salida no deje stock negativo —salvo permiso explícito de venta/consumo pendiente—, inserta el ledger y actualiza el balance. La columna `version` permite detectar actualizaciones concurrentes.
 
-El costo promedio ponderado se actualiza sólo al recibir inventario: `(valor anterior + costo real recibido) / (stock anterior + cantidad recibida)`. Cada salida utiliza y guarda el promedio vigente como `unit_cost_applied`; por tanto, una compra posterior nunca reescribe el costo de una venta o reparación pasada. Una devolución de venta restituye la mercadería al costo snapshot de la línea original; una devolución a proveedor la retira al costo histórico de la recepción/devuelve, no al precio de venta.
+El costo promedio ponderado se actualiza sólo al recibir inventario: `(valor anterior + costo real recibido) / (stock anterior + cantidad recibida)`. El promedio y costo unitario se guardan con seis decimales; el valor monetario extendido se redondea a centavos por movimiento con regla consistente. Cada salida conserva su costo aplicado, así una compra posterior no reescribe costos históricos. Una devolución de venta usa el costo snapshot de la salida original; una devolución a proveedor usa el costo histórico de recepción. Una transacción bloquea el balance por producto/ubicación y recalcula cantidad, valor y promedio conjuntamente.
 
 ### Reparaciones
 
@@ -146,7 +146,7 @@ El costo promedio ponderado se actualiza sólo al recibir inventario: `(valor an
 | `repair_orders` | `id`, tenant, código, cliente/moto, estado, problema reportado, diagnóstico, mecánico asignado, kilometraje ingreso, `quoted_total` nullable, entrega estimada nullable, fechas | único `(workshop_id, code)`. Precio `NULL` hasta cotizar. No permite `entregada` sin precio definido ni saldo pendiente salvo permiso de administrador. |
 | `repair_status_history` | `repair_order_id`, estado previo/nuevo, observación, actor, fecha | se inserta por cada cambio; el estado de la orden es la proyección actual. |
 | `repair_lines` | orden, tipo (`inventory_part`, `direct_part`, `customer_part`, `labor`, `other`), producto opcional, descripción snapshot, cantidad, costo/precio unitario, total, `inventory_movement_id` opcional | cantidades positivas. Para `inventory_part`, producto y movimiento son obligatorios y el movimiento es único. Para pieza aportada por cliente, costo de taller es 0. |
-| `repair_expenses` | orden, proveedor opcional, categoría, descripción, monto, fecha, adjunto futuro | no representa ingreso y se cuenta como costo directo de esa reparación. |
+| `repair_expenses` | tenant, orden, `purchase_line_id` opcional, categoría, descripción, monto, fecha | no representa ingreso. Compra directa de repuesto se reconoce como costo desde la línea de compra o su gasto vinculado, nunca por ambas rutas; `purchase_line_id` es único y enlaza los pagos correspondientes. |
 
 La orden puede ingresar sólo con cliente, moto y problema; repuestos, gastos, diagnóstico, precio y entrega estimada pueden añadirse después. Los precios y costos de `repair_lines` son snapshots y no se recalculan cuando cambia el producto.
 
@@ -168,7 +168,7 @@ La orden puede ingresar sólo con cliente, moto y problema; repuestos, gastos, d
 | Tabla | Campos esenciales | Reglas |
 | --- | --- | --- |
 | `payments` | tenant, dirección (`inbound`/`outbound`), método, monto, fecha, referencia externa, estado (`pending`, `confirmed`, `voided`, `reversed`), nota, `idempotency_key` | Es el movimiento de dinero. `inbound` cobra ventas/reparaciones o recibe devolución de proveedor; `outbound` paga compras/gastos o reembolsa clientes. |
-| `payment_allocations` | `payment_id`, monto aplicado, uno de: reparación, venta, compra o gasto operativo | `CHECK` de exactamente un documento destino. Permite pagos parciales y un pago repartido. La suma confirmada de asignaciones debe igualar el pago confirmado. |
+| `payment_allocations` | `payment_id`, monto aplicado, exactamente un destino: reparación, venta, compra, compra directa, gasto de reparación o gasto operativo | `CHECK` de exactamente un destino. Permite pagos parciales y repartidos. La suma confirmada debe corresponder al pago; servicios transaccionales validan saldo, dirección y pertenencia al tenant. |
 | `payment_methods` | tenant, código, etiqueta, activo, referencia de cuenta | configura sólo efectivo, Yape, Plin y transferencia. El registro es manual: no hay POS, pasarela, API bancaria ni secreto de proveedor. |
 | `cash_movements` (fase posterior) | caja, tipo, monto, origen de pago/gasto, fecha | necesario si se gestiona arqueo de caja; no es requisito de la primera migración. |
 
@@ -181,7 +181,7 @@ Las vistas de rentabilidad se derivan, no se editan:
 
 ## Restricciones y transacciones de negocio
 
-1. **Aislamiento de tenant.** Cada FK de negocio debe apuntar a registros del mismo `organization_id`/`workshop_id`. En la etapa SaaS, activar RLS con `organization_id` tomado de la sesión autenticada; hasta entonces, imponerlo en servicios de servidor y restricciones compuestas.
+1. **Aislamiento de tenant.** Cada FK de negocio debe apuntar a registros del mismo `organization_id`/`workshop_id` mediante claves únicas compuestas en padres y FKs compuestas en hijos. En SaaS, activar además RLS; los servicios verifican membership en todo caso.
 2. **Estado de reparación.** Sólo se permiten las transiciones definidas: `recibida → diagnostico → en_proceso/esperando_repuesto → lista → entregada`, con retrocesos auditados. Cancelar o revertir una orden crea reversiones de inventario; no borra líneas ni pagos.
 3. **Pagos y cuentas por cobrar/pagar.** Un pago no puede ser negativo ni confirmarse sin que sus asignaciones sumen su importe. Los pagos de compra y gasto son `outbound`; los cobros de venta/reparación son `inbound`. El saldo de cada documento se deriva de asignaciones confirmadas, no se captura manualmente.
 4. **Anulaciones y devoluciones.** Un documento confirmado nunca se elimina. `voided_at`, `voided_by`, `void_reason` y el documento/reverso relacionado son obligatorios. La anulación revierte stock y margen sólo una vez; si ya hubo pago, requiere reembolso, nota de crédito o una excepción auditada. Las devoluciones parciales sólo pueden referenciar líneas confirmadas y no superar su cantidad neta disponible.

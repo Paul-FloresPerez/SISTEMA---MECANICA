@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   date,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -250,15 +251,21 @@ export const stockLocations = pgTable('stock_locations', {
 ]);
 
 export const inventoryBalances = pgTable('inventory_balances', {
+  organizationId: uuid('organization_id').notNull(),
+  workshopId: uuid('workshop_id').notNull(),
   productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'restrict' }),
   stockLocationId: uuid('stock_location_id').notNull().references(() => stockLocations.id, { onDelete: 'restrict' }),
   quantityOnHand: quantity('quantity_on_hand').notNull().default('0'),
   inventoryValue: money('inventory_value').notNull().default('0'),
-  averageUnitCost: money('average_unit_cost').notNull().default('0'),
+  averageUnitCost: numeric('average_unit_cost', { precision: 18, scale: 6 }).notNull().default('0'),
   version: integer('version').notNull().default(0),
   updatedAt: updatedAt(),
 }, (table) => [
   primaryKey({ columns: [table.productId, table.stockLocationId], name: 'inventory_balances_pkey' }),
+  foreignKey({ columns: [table.organizationId, table.workshopId], foreignColumns: [workshops.organizationId, workshops.id], name: 'inventory_balances_workshop_tenant_fk' }),
+  foreignKey({ columns: [table.organizationId, table.productId], foreignColumns: [products.organizationId, products.id], name: 'inventory_balances_product_tenant_fk' }),
+  foreignKey({ columns: [table.workshopId, table.productId], foreignColumns: [products.workshopId, products.id], name: 'inventory_balances_product_workshop_fk' }),
+  foreignKey({ columns: [table.workshopId, table.stockLocationId], foreignColumns: [stockLocations.workshopId, stockLocations.id], name: 'inventory_balances_location_workshop_fk' }),
   index('inventory_balances_location_idx').on(table.stockLocationId),
   check('inventory_balances_quantity_check', sql`${table.quantityOnHand} >= 0`),
   check('inventory_balances_value_check', sql`${table.inventoryValue} >= 0`),
@@ -352,7 +359,10 @@ export const repairLines = pgTable('repair_lines', {
 
 export const repairExpenses = pgTable('repair_expenses', {
   id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull(),
+  workshopId: uuid('workshop_id').notNull(),
   repairOrderId: uuid('repair_order_id').notNull().references(() => repairOrders.id, { onDelete: 'restrict' }),
+  purchaseLineId: uuid('purchase_line_id'),
   description: varchar('description', { length: 240 }).notNull(),
   category: varchar('category', { length: 120 }).notNull(),
   amount: money('amount').notNull(),
@@ -360,6 +370,9 @@ export const repairExpenses = pgTable('repair_expenses', {
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 }, (table) => [
+  foreignKey({ columns: [table.organizationId, table.workshopId], foreignColumns: [workshops.organizationId, workshops.id], name: 'repair_expenses_workshop_tenant_fk' }),
+  foreignKey({ columns: [table.organizationId, table.repairOrderId], foreignColumns: [repairOrders.organizationId, repairOrders.id], name: 'repair_expenses_repair_tenant_fk' }),
+  uniqueIndex('repair_expenses_purchase_line_unique').on(table.purchaseLineId).where(sql`${table.purchaseLineId} is not null`),
   index('repair_expenses_repair_order_id_idx').on(table.repairOrderId),
   check('repair_expenses_amount_check', sql`${table.amount} >= 0`),
 ]);
@@ -471,6 +484,8 @@ export const purchases = pgTable('purchases', {
 
 export const purchaseLines = pgTable('purchase_lines', {
   id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: uuid('organization_id').notNull(),
+  workshopId: uuid('workshop_id').notNull(),
   purchaseId: uuid('purchase_id').notNull().references(() => purchases.id, { onDelete: 'restrict' }),
   productId: uuid('product_id').references(() => products.id, { onDelete: 'set null' }),
   repairOrderId: uuid('repair_order_id').references(() => repairOrders.id, { onDelete: 'restrict' }),
@@ -481,6 +496,11 @@ export const purchaseLines = pgTable('purchase_lines', {
   inventoryMovementId: uuid('inventory_movement_id'),
   createdAt: createdAt(),
 }, (table) => [
+  foreignKey({ columns: [table.organizationId, table.workshopId], foreignColumns: [workshops.organizationId, workshops.id], name: 'purchase_lines_workshop_tenant_fk' }),
+  foreignKey({ columns: [table.organizationId, table.purchaseId], foreignColumns: [purchases.organizationId, purchases.id], name: 'purchase_lines_purchase_tenant_fk' }),
+  foreignKey({ columns: [table.organizationId, table.repairOrderId], foreignColumns: [repairOrders.organizationId, repairOrders.id], name: 'purchase_lines_repair_tenant_fk' }),
+  foreignKey({ columns: [table.workshopId, table.productId], foreignColumns: [products.workshopId, products.id], name: 'purchase_lines_product_workshop_fk' }),
+  unique('purchase_lines_organization_id_id_unique').on(table.organizationId, table.id),
   index('purchase_lines_purchase_id_idx').on(table.purchaseId),
   index('purchase_lines_product_id_idx').on(table.productId),
   index('purchase_lines_repair_order_id_idx').on(table.repairOrderId),
@@ -578,6 +598,8 @@ export const payments = pgTable('payments', {
   unique('payments_workshop_idempotency_key_unique').on(table.workshopId, table.idempotencyKey),
   index('payments_workshop_status_paid_at_idx').on(table.workshopId, table.status, table.paidAt),
   index('payments_reversed_payment_id_idx').on(table.reversedPaymentId),
+  foreignKey({ columns: [table.organizationId, table.reversedPaymentId], foreignColumns: [table.organizationId, table.id], name: 'payments_reversal_same_tenant_fk' }),
+  uniqueIndex('payments_single_reversal_unique').on(table.reversedPaymentId).where(sql`${table.reversedPaymentId} is not null`),
   check('payments_amount_check', sql`${table.amount} > 0`),
 ]);
 
@@ -588,6 +610,8 @@ export const paymentAllocations = pgTable('payment_allocations', {
   saleId: uuid('sale_id').references(() => sales.id, { onDelete: 'restrict' }),
   purchaseId: uuid('purchase_id').references(() => purchases.id, { onDelete: 'restrict' }),
   operatingExpenseId: uuid('operating_expense_id').references(() => operatingExpenses.id, { onDelete: 'restrict' }),
+  purchaseLineId: uuid('purchase_line_id'),
+  repairExpenseId: uuid('repair_expense_id'),
   amount: money('amount').notNull(),
   createdAt: createdAt(),
 }, (table) => [
@@ -596,8 +620,12 @@ export const paymentAllocations = pgTable('payment_allocations', {
   index('payment_allocations_sale_id_idx').on(table.saleId),
   index('payment_allocations_purchase_id_idx').on(table.purchaseId),
   index('payment_allocations_expense_id_idx').on(table.operatingExpenseId),
+  index('payment_allocations_purchase_line_id_idx').on(table.purchaseLineId),
+  index('payment_allocations_repair_expense_id_idx').on(table.repairExpenseId),
+  foreignKey({ columns: [table.purchaseLineId], foreignColumns: [purchaseLines.id], name: 'payment_allocations_purchase_line_fk' }),
+  foreignKey({ columns: [table.repairExpenseId], foreignColumns: [repairExpenses.id], name: 'payment_allocations_repair_expense_fk' }),
   check('payment_allocations_amount_check', sql`${table.amount} > 0`),
-  check('payment_allocations_one_document_check', sql`(case when ${table.repairOrderId} is not null then 1 else 0 end + case when ${table.saleId} is not null then 1 else 0 end + case when ${table.purchaseId} is not null then 1 else 0 end + case when ${table.operatingExpenseId} is not null then 1 else 0 end) = 1`),
+  check('payment_allocations_one_document_check', sql`(case when ${table.repairOrderId} is not null then 1 else 0 end + case when ${table.saleId} is not null then 1 else 0 end + case when ${table.purchaseId} is not null then 1 else 0 end + case when ${table.operatingExpenseId} is not null then 1 else 0 end + case when ${table.purchaseLineId} is not null then 1 else 0 end + case when ${table.repairExpenseId} is not null then 1 else 0 end) = 1`),
 ]);
 
 export const inventoryMovements = pgTable('inventory_movements', {
@@ -608,7 +636,7 @@ export const inventoryMovements = pgTable('inventory_movements', {
   stockLocationId: uuid('stock_location_id').notNull().references(() => stockLocations.id, { onDelete: 'restrict' }),
   movementType: inventoryMovementTypeEnum('movement_type').notNull(),
   quantityDelta: quantity('quantity_delta').notNull(),
-  unitCostApplied: money('unit_cost_applied').notNull(),
+  unitCostApplied: numeric('unit_cost_applied', { precision: 18, scale: 6 }).notNull(),
   totalCostApplied: money('total_cost_applied').notNull(),
   quantityBefore: quantity('quantity_before').notNull(),
   quantityAfter: quantity('quantity_after').notNull(),
@@ -617,6 +645,7 @@ export const inventoryMovements = pgTable('inventory_movements', {
   reason: varchar('reason', { length: 240 }).notNull(),
   referenceType: varchar('reference_type', { length: 64 }).notNull(),
   referenceId: uuid('reference_id').notNull(),
+  reversesMovementId: uuid('reverses_movement_id'),
   createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: createdAt(),
 }, (table) => [
@@ -624,6 +653,8 @@ export const inventoryMovements = pgTable('inventory_movements', {
   index('inventory_movements_location_created_idx').on(table.stockLocationId, table.createdAt),
   index('inventory_movements_reference_idx').on(table.referenceType, table.referenceId),
   unique('inventory_movements_reference_unique').on(table.referenceType, table.referenceId, table.productId, table.stockLocationId),
+  uniqueIndex('inventory_movements_single_reversal_unique').on(table.reversesMovementId).where(sql`${table.reversesMovementId} is not null`),
+  foreignKey({ columns: [table.reversesMovementId], foreignColumns: [table.id], name: 'inventory_movements_reversal_fk' }),
   check('inventory_movements_costs_check', sql`${table.unitCostApplied} >= 0 and ${table.totalCostApplied} >= 0 and ${table.inventoryValueBefore} >= 0 and ${table.inventoryValueAfter} >= 0`),
   check('inventory_movements_balance_check', sql`${table.quantityAfter} >= 0`),
 ]);

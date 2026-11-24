@@ -12,10 +12,12 @@
     "test": "tsx --test src/utils/calculations.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
-    "db:verify:postgres": "node scripts/verify-db-integrity.mjs"
+    "db:verify:postgres": "node scripts/verify-db-integrity.mjs",
+    "auth:create-admin": "node scripts/create-admin.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.1",
+    "@node-rs/argon2": "^2.2.2",
     "drizzle-orm": "^0.45.4",
     "lucide-react": "^0.546.0",
     "next": "^16.0.0",

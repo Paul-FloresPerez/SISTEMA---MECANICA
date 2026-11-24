@@ -1,4 +1,4 @@
-import { ClientsPage } from '../../src/screens/ClientsPage';
+import { ClientsPage } from '@/src/screens/ClientsPage';
 
 export default function Page() {
   return <ClientsPage />;

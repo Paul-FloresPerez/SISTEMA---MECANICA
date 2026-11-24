@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
 import '../src/index.css';
-import { WorkshopProvider } from '../src/context/WorkshopContext';
-import { MainLayout } from '../src/layouts/MainLayout';
 
 export const metadata: Metadata = {
   title: 'Zona Racing — Gestión de Taller de Motocicletas',
@@ -21,9 +19,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
       </head>
       <body className="bg-[#F5F6F8] text-[#111827] antialiased selection:bg-rose-600/15 selection:text-rose-700 dark:bg-[#0B0E14] dark:text-[#F3F4F6]">
-        <WorkshopProvider>
-          <MainLayout>{children}</MainLayout>
-        </WorkshopProvider>
+        {children}
       </body>
     </html>
   );

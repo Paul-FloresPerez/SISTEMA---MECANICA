@@ -28,7 +28,9 @@ import {
   calculatePeriodReport,
   calculateRepairFinancials,
   formatCurrency,
+  formatRepairPrice,
   formatShortDate,
+  getTodayIso,
 } from '../utils/calculations';
 import { RepairStatusText } from '../components/common/StatusDisplay';
 
@@ -41,16 +43,18 @@ export const DashboardPage: React.FC = () => {
   const [dateScope, setDateScope] = useState<DateScope>('mes');
 
   const sym = settings.currencySymbol;
+  const today = getTodayIso();
+  const currentMonth = today.slice(0, 7);
 
   const filteredData = useMemo(() => {
-    const refDate = new Date('2026-11-21T23:59:59');
+    const refDate = new Date(`${today}T23:59:59`);
     const inScope = (iso: string) => {
       if (dateScope === 'todo') return true;
       const d = new Date(`${iso}T12:00:00`);
       const diffDays = (refDate.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
-      if (dateScope === 'hoy') return iso === '2026-11-21';
-      if (dateScope === '7d') return diffDays <= 7;
-      return iso.startsWith('2026-11');
+      if (dateScope === 'hoy') return iso === today;
+      if (dateScope === '7d') return diffDays >= 0 && diffDays <= 7;
+      return iso.startsWith(currentMonth);
     };
 
     const scopedSales = sales.filter((s) => inScope(s.date));
@@ -58,15 +62,15 @@ export const DashboardPage: React.FC = () => {
     const scopedTx = transactions.filter((t) => inScope(t.date));
 
     const todaySalesTotal = sales
-      .filter((s) => s.date === '2026-11-21')
+      .filter((s) => s.date === today)
       .reduce((sum, s) => sum + s.total, 0);
 
     const monthSalesTotal = sales
-      .filter((s) => s.date.startsWith('2026-11'))
+      .filter((s) => s.date.startsWith(currentMonth))
       .reduce((sum, s) => sum + s.total, 0);
 
     const monthExpensesTotal = transactions
-      .filter((t) => t.date.startsWith('2026-11'))
+      .filter((t) => t.date.startsWith(currentMonth))
       .reduce((sum, t) => sum + t.amount, 0);
 
     const periodReport = calculatePeriodReport(scopedSales, scopedRepairs, scopedTx);
@@ -77,7 +81,7 @@ export const DashboardPage: React.FC = () => {
       monthExpensesTotal,
       periodReport,
     };
-  }, [sales, repairs, transactions, dateScope]);
+  }, [sales, repairs, transactions, dateScope, today, currentMonth]);
 
   const pendingRepairs = useMemo(
     () => repairs.filter((r) => r.status !== 'entregada'),
@@ -93,7 +97,7 @@ export const DashboardPage: React.FC = () => {
     if (dateScope === 'hoy') {
       return [
         {
-          label: 'Hoy (21 Nov)',
+          label: `Hoy (${formatShortDate(today)})`,
           ingresos: filteredData.todaySalesTotal + 120,
           gastos: 48,
         },
@@ -200,7 +204,7 @@ export const DashboardPage: React.FC = () => {
             {formatCurrency(filteredData.todaySalesTotal, sym)}
           </p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            Mostrador POS · 21 Nov
+            Mostrador POS · {formatShortDate(today)}
           </p>
         </div>
 
@@ -444,7 +448,7 @@ export const DashboardPage: React.FC = () => {
                       {formatShortDate(repair.estimatedDelivery)}
                     </td>
                     <td className="py-3 px-4 text-right font-mono-num font-semibold text-slate-900 dark:text-white whitespace-nowrap">
-                      {formatCurrency(fin.globalPrice, sym)}
+                      {formatRepairPrice(fin.globalPrice, sym)}
                     </td>
                     <td className="py-3 px-5 text-right font-mono-num font-semibold whitespace-nowrap">
                       <span
@@ -491,7 +495,7 @@ export const DashboardPage: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-800/60">
                   <span className="text-slate-500 dark:text-slate-400">
-                    Global: <strong className="font-mono-num text-slate-900 dark:text-white">{formatCurrency(fin.globalPrice, sym)}</strong>
+                    Global: <strong className="font-mono-num text-slate-900 dark:text-white">{formatRepairPrice(fin.globalPrice, sym)}</strong>
                   </span>
                   <span className="text-slate-500 dark:text-slate-400">
                     Saldo:{' '}

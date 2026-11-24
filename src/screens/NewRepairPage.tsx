@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -16,6 +16,9 @@ import { useWorkshop } from '../context/WorkshopContext';
 import {
   calculateRepairFinancials,
   formatCurrency,
+  formatRepairPrice,
+  getIsoDateAfterDays,
+  getTodayIso,
   getPartSourceLabel,
   validateRepairDraft,
 } from '../utils/calculations';
@@ -31,8 +34,7 @@ import { REPAIR_STATUS_OPTIONS } from '../components/common/StatusDisplay';
 const MOBILE_STEPS = [
   { id: 1, title: 'Cliente y moto' },
   { id: 2, title: 'Diagnóstico' },
-  { id: 3, title: 'Repuestos y gastos' },
-  { id: 4, title: 'Precio y confirmación' },
+  { id: 3, title: 'Detalles opcionales' },
 ];
 
 export const NewRepairPage: React.FC = () => {
@@ -56,13 +58,13 @@ export const NewRepairPage: React.FC = () => {
       'Carlos Mendoza'
   );
   const [status, setStatus] = useState<RepairStatus>('recibida');
-  const [estimatedDelivery, setEstimatedDelivery] = useState('2026-11-24');
+  const [estimatedDelivery, setEstimatedDelivery] = useState(() => getIsoDateAfterDays(1));
   const [reportedProblem, setReportedProblem] = useState('');
   const [diagnosisNotes, setDiagnosisNotes] = useState('');
 
   const [parts, setParts] = useState<RepairPart[]>([]);
   const [expenses, setExpenses] = useState<RepairExpense[]>([]);
-  const [globalPrice, setGlobalPrice] = useState<number>(180);
+  const [globalPrice, setGlobalPrice] = useState<number>(0);
   const [initialPayment, setInitialPayment] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('efectivo');
 
@@ -79,6 +81,7 @@ export const NewRepairPage: React.FC = () => {
   const [expAmount, setExpAmount] = useState<number>(0);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const submittingRef = useRef(false);
 
   const handleCustomerChange = (newCustId: string) => {
     setCustomerId(newCustId);
@@ -135,7 +138,7 @@ export const NewRepairPage: React.FC = () => {
         description: expDesc.trim(),
         amount: expAmount,
         category: 'Asociado a reparación',
-        date: '2026-11-21',
+        date: getTodayIso(),
       },
     ]);
     setExpDesc('');
@@ -150,7 +153,7 @@ export const NewRepairPage: React.FC = () => {
         globalPrice,
         payments:
           initialPayment > 0
-            ? [{ id: 'preview', amount: initialPayment, method: paymentMethod, date: '2026-11-21' }]
+            ? [{ id: 'preview', amount: initialPayment, method: paymentMethod, date: getTodayIso() }]
             : [],
       }),
     [parts, expenses, globalPrice, initialPayment, paymentMethod]
@@ -158,19 +161,20 @@ export const NewRepairPage: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     const validation = validateRepairDraft({
       customerId,
       motorcycleId,
       reportedProblem,
-      globalPrice,
     });
     if (Object.keys(validation).length > 0) {
       setErrors(validation as Record<string, string>);
       if (validation.customerId || validation.motorcycleId) setMobileStep(1);
       else if (validation.reportedProblem) setMobileStep(2);
-      else if (validation.globalPrice) setMobileStep(4);
       return;
     }
+
+    submittingRef.current = true;
 
     const created = addRepair({
       customerId,
@@ -190,7 +194,7 @@ export const NewRepairPage: React.FC = () => {
                 id: `pay-${Date.now()}`,
                 amount: initialPayment,
                 method: paymentMethod,
-                date: new Date().toISOString().slice(0, 10),
+                date: getTodayIso(),
                 note: 'Abono inicial al ingreso',
               },
             ]
@@ -214,7 +218,7 @@ export const NewRepairPage: React.FC = () => {
       return;
     }
     setErrors({});
-    setMobileStep((s) => Math.min(4, s + 1));
+    setMobileStep((s) => Math.min(3, s + 1));
   };
 
   return (
@@ -237,13 +241,13 @@ export const NewRepairPage: React.FC = () => {
       <div className="md:hidden bg-white dark:bg-[#131822] border border-slate-200 dark:border-slate-800 rounded-xl p-3.5">
         <div className="flex items-center justify-between text-xs mb-2.5">
           <span className="font-bold text-slate-900 dark:text-white">
-            Paso {mobileStep} de 4 · {MOBILE_STEPS[mobileStep - 1].title}
+            Paso {mobileStep} de 3 · {MOBILE_STEPS[mobileStep - 1].title}
           </span>
           <span className="font-mono-num text-slate-500 dark:text-slate-400">
-            {Math.round((mobileStep / 4) * 100)}%
+            {Math.round((mobileStep / 3) * 100)}%
           </span>
         </div>
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-3 gap-1.5">
           {MOBILE_STEPS.map((st) => (
             <button
               key={st.id}
@@ -457,7 +461,7 @@ export const NewRepairPage: React.FC = () => {
           >
             <div>
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                3. Repuestos utilizados y gastos asociados
+                3. Repuestos y gastos (opcionales)
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Registra repuestos de almacén, compras directas para la moto o piezas traídas por el cliente.
@@ -725,31 +729,31 @@ export const NewRepairPage: React.FC = () => {
             </div>
           </section>
 
-          {/* Mobile Step 4 Pricing Section (also visible on Desktop in sidebar summary) */}
+          {/* Optional mobile commercial details, also visible on desktop in the sidebar */}
           <section
             className={`bg-white dark:bg-[#131822] border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4 md:hidden ${
-              mobileStep === 4 ? 'block' : 'hidden'
+              mobileStep === 3 ? 'block' : 'hidden'
             }`}
           >
             <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-              4. Precio global y pago inicial
+              Cierre comercial (opcional)
             </h2>
             <div className="space-y-3">
               <div>
                 <label htmlFor="m-global-price" className="block text-xs font-semibold mb-1">
-                  Precio global acordado ({sym})
+                  Precio final acordado ({sym}) — opcional
                 </label>
                 <input
                   id="m-global-price"
                   type="number"
-                  min={1}
+                  min={0}
                   value={globalPrice}
                   onChange={(e) => setGlobalPrice(Number(e.target.value))}
                   className="w-full px-3 py-2.5 text-base font-mono-num font-bold bg-slate-50 dark:bg-[#0F141C] border border-slate-200 dark:border-slate-700 rounded-lg"
                 />
-                {errors.globalPrice && (
-                  <p className="text-xs text-rose-600 mt-1">{errors.globalPrice}</p>
-                )}
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                  Puedes guardar la orden y definir el precio después del diagnóstico.
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -800,8 +804,9 @@ export const NewRepairPage: React.FC = () => {
               <div className="flex-1" />
             )}
 
-            {mobileStep < 4 ? (
+            {mobileStep < 3 ? (
               <button
+                key="next-step"
                 type="button"
                 onClick={goNextStep}
                 className="flex-1 py-3 px-4 text-xs font-semibold rounded-xl bg-rose-600 text-white hover:bg-rose-700 inline-flex items-center justify-center gap-1.5"
@@ -811,6 +816,7 @@ export const NewRepairPage: React.FC = () => {
               </button>
             ) : (
               <button
+                key="create-repair"
                 type="submit"
                 className="flex-1 py-3 px-4 text-xs font-semibold rounded-xl bg-rose-600 text-white hover:bg-rose-700 inline-flex items-center justify-center gap-1.5"
               >
@@ -821,14 +827,14 @@ export const NewRepairPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Desktop Summary & Financial Card (shown on mobile only in step 4) */}
+        {/* Desktop summary card, shown on mobile in the optional-details step */}
         <aside
           className={`bg-white dark:bg-[#131822] border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4 lg:sticky lg:top-24 ${
-            mobileStep === 4 ? 'block' : 'hidden md:block'
+            mobileStep === 3 ? 'block' : 'hidden md:block'
           }`}
         >
           <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-            Resumen económico de la orden
+            Resumen de la orden
           </h2>
 
           <div className="hidden md:block space-y-3">
@@ -837,19 +843,19 @@ export const NewRepairPage: React.FC = () => {
                 htmlFor="d-global-price"
                 className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"
               >
-                Precio global al cliente ({sym})
+                Precio final al cliente ({sym}) — opcional
               </label>
               <input
                 id="d-global-price"
                 type="number"
-                min={1}
+                min={0}
                 value={globalPrice}
                 onChange={(e) => setGlobalPrice(Number(e.target.value))}
                 className="w-full px-3 py-2 text-base font-mono-num font-bold bg-slate-50 dark:bg-[#0F141C] border border-slate-200 dark:border-slate-700 rounded-lg"
               />
-              {errors.globalPrice && (
-                <p className="text-xs text-rose-600 mt-1">{errors.globalPrice}</p>
-              )}
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Déjalo en cero para definirlo luego.
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
@@ -893,6 +899,12 @@ export const NewRepairPage: React.FC = () => {
 
           <dl className="space-y-2 pt-3 border-t border-slate-200 dark:border-slate-800 text-xs">
             <div className="flex justify-between">
+              <dt className="text-slate-500 dark:text-slate-400">Precio final</dt>
+              <dd className="font-mono-num font-semibold text-slate-900 dark:text-white">
+                {formatRepairPrice(globalPrice, sym)}
+              </dd>
+            </div>
+            <div className="flex justify-between">
               <dt className="text-slate-500 dark:text-slate-400">Repuestos almacén (costo)</dt>
               <dd className="font-mono-num font-medium">
                 {formatCurrency(previewFinancials.warehousePartsCost, sym)}
@@ -919,7 +931,7 @@ export const NewRepairPage: React.FC = () => {
             <div className="flex justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
               <dt className="font-semibold text-slate-700 dark:text-slate-200">Saldo pendiente</dt>
               <dd className="font-mono-num font-bold text-amber-700 dark:text-amber-400">
-                {formatCurrency(previewFinancials.pendingBalance, sym)}
+                {globalPrice > 0 ? formatCurrency(previewFinancials.pendingBalance, sym) : 'Por definir'}
               </dd>
             </div>
             <div className="flex justify-between">
@@ -931,7 +943,7 @@ export const NewRepairPage: React.FC = () => {
                     : 'text-rose-700 dark:text-rose-400'
                 }`}
               >
-                {formatCurrency(previewFinancials.estimatedResult, sym)}
+                {globalPrice > 0 ? formatCurrency(previewFinancials.estimatedResult, sym) : 'Por definir'}
               </dd>
             </div>
           </dl>

@@ -172,9 +172,7 @@ export const SettingsPage: React.FC = () => {
                 onChange={(e) => setCurrencySymbol(e.target.value)}
                 className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-[#0F141C] border border-slate-200 dark:border-slate-700 rounded-lg"
               >
-                <option value="$">$ (Dólares / Pesos)</option>
                 <option value="S/">S/ (Soles)</option>
-                <option value="€">€ (Euros)</option>
               </select>
             </div>
             <div>

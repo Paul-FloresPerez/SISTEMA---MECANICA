@@ -1,6 +1,0 @@
-{
-  "name": "Zona Racing",
-  "description": "Sistema de gestión integral para taller de motocicletas Zona Racing: reparaciones, ventas rápidas POS, inventario, compras, gastos, clientes y reportes.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

@@ -170,14 +170,12 @@ export interface RepairDraftValidationInput {
   customerId: string;
   motorcycleId: string;
   reportedProblem: string;
-  globalPrice: number;
 }
 
 export interface RepairValidationErrors {
   customerId?: string;
   motorcycleId?: string;
   reportedProblem?: string;
-  globalPrice?: string;
 }
 
 export function validateRepairDraft(input: RepairDraftValidationInput): RepairValidationErrors {
@@ -191,18 +189,38 @@ export function validateRepairDraft(input: RepairDraftValidationInput): RepairVa
   if (input.reportedProblem.trim().length < 5) {
     errors.reportedProblem = 'Describe el problema reportado (mínimo 5 caracteres).';
   }
-  if (!Number.isFinite(input.globalPrice) || input.globalPrice <= 0) {
-    errors.globalPrice = 'Ingresa un precio global mayor a 0.';
-  }
   return errors;
 }
 
-export function formatCurrency(amount: number, symbol: string = '$'): string {
-  const formatted = Math.abs(amount).toLocaleString('en-US', {
+export function formatCurrency(amount: number, symbol: string = 'S/'): string {
+  const formatted = Math.abs(amount).toLocaleString('es-PE', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
   return amount < 0 ? `-${symbol}${formatted}` : `${symbol}${formatted}`;
+}
+
+export function formatRepairPrice(amount: number, symbol: string = 'S/'): string {
+  return amount > 0 ? formatCurrency(amount, symbol) : 'Por definir';
+}
+
+function toLocalIsoDate(date: Date): string {
+  const timezoneOffsetMs = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
+}
+
+export function getTodayIso(): string {
+  return toLocalIsoDate(new Date());
+}
+
+export function getIsoDateAfterDays(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return toLocalIsoDate(date);
+}
+
+export function getCurrentYear(): number {
+  return new Date().getFullYear();
 }
 
 export function getPartSourceLabel(source: RepairPartSource): string {
@@ -217,7 +235,7 @@ export function getPartSourceLabel(source: RepairPartSource): string {
 }
 
 export function formatShortDate(isoDate: string): string {
-  const date = new Date(isoDate);
+  const date = new Date(`${isoDate}T12:00:00`);
   if (Number.isNaN(date.getTime())) return isoDate;
   return date.toLocaleDateString('es-ES', {
     day: '2-digit',

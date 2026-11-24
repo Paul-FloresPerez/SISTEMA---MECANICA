@@ -6,6 +6,7 @@ import { Bike, Plus, Search, User, ArrowRight } from 'lucide-react';
 import { useWorkshop } from '../context/WorkshopContext';
 import { Modal } from '../components/common/Modal';
 import { EmptyState } from '../components/common/EmptyState';
+import { getCurrentYear } from '../utils/calculations';
 
 export const ClientsPage: React.FC = () => {
   const { customers, motorcycles, repairs, addCustomer, addMotorcycle } = useWorkshop();
@@ -24,7 +25,7 @@ export const ClientsPage: React.FC = () => {
   const [addInitialMoto, setAddInitialMoto] = useState(true);
   const [motoBrand, setMotoBrand] = useState('');
   const [motoModel, setMotoModel] = useState('');
-  const [motoYear, setMotoYear] = useState(2024);
+  const [motoYear, setMotoYear] = useState(() => getCurrentYear());
   const [motoPlate, setMotoPlate] = useState('');
   const [motoCc, setMotoCc] = useState(300);
 

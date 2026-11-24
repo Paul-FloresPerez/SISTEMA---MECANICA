@@ -15,7 +15,9 @@ import { useWorkshop } from '../context/WorkshopContext';
 import {
   calculateRepairFinancials,
   formatCurrency,
+  formatRepairPrice,
   formatShortDate,
+  getTodayIso,
   getPartSourceLabel,
 } from '../utils/calculations';
 import {
@@ -94,7 +96,7 @@ export const RepairDetailPage: React.FC = () => {
     addRepairPayment(repair.id, {
       amount: payAmount,
       method: payMethod,
-      date: new Date().toISOString().slice(0, 10),
+      date: getTodayIso(),
       note: payNote.trim() || 'Abono en taller',
     });
     setPaymentModalOpen(false);
@@ -113,7 +115,7 @@ export const RepairDetailPage: React.FC = () => {
     updateRepair(repair.id, {
       reportedProblem: editProblem.trim() || repair.reportedProblem,
       diagnosisNotes: editDiagnosis.trim(),
-      globalPrice: Math.max(1, editGlobalPrice),
+      globalPrice: Math.max(0, editGlobalPrice),
       mechanicName: editMechanic,
     });
     setEditModalOpen(false);
@@ -385,7 +387,7 @@ export const RepairDetailPage: React.FC = () => {
               <div className="flex justify-between">
                 <dt className="text-slate-500 dark:text-slate-400">Precio global</dt>
                 <dd className="font-mono-num font-bold text-sm text-slate-900 dark:text-white">
-                  {formatCurrency(financials.globalPrice, sym)}
+                  {formatRepairPrice(financials.globalPrice, sym)}
                 </dd>
               </div>
               <div className="flex justify-between">
@@ -403,7 +405,7 @@ export const RepairDetailPage: React.FC = () => {
                       : 'text-emerald-700 dark:text-emerald-400'
                   }`}
                 >
-                  {formatCurrency(financials.pendingBalance, sym)}
+                  {repair.globalPrice > 0 ? formatCurrency(financials.pendingBalance, sym) : 'Por definir'}
                 </dd>
               </div>
             </dl>
@@ -420,7 +422,7 @@ export const RepairDetailPage: React.FC = () => {
                   Resultado estimado
                 </span>
                 <span className="font-mono-num font-bold text-emerald-700 dark:text-emerald-400">
-                  {formatCurrency(financials.estimatedResult, sym)}
+                  {repair.globalPrice > 0 ? formatCurrency(financials.estimatedResult, sym) : 'Por definir'}
                 </span>
               </div>
             </div>
@@ -472,7 +474,7 @@ export const RepairDetailPage: React.FC = () => {
         open={paymentModalOpen}
         onClose={() => setPaymentModalOpen(false)}
         title={`Registrar pago · ${repair.code}`}
-        subtitle={`Saldo pendiente actual: ${formatCurrency(financials.pendingBalance, sym)}`}
+        subtitle={`Saldo pendiente actual: ${repair.globalPrice > 0 ? formatCurrency(financials.pendingBalance, sym) : 'por definir'}`}
       >
         <form onSubmit={handleConfirmPayment} className="space-y-4">
           <div>
@@ -571,16 +573,19 @@ export const RepairDetailPage: React.FC = () => {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="edit-price" className="block text-xs font-semibold mb-1">
-                Precio global ({sym})
+                Precio final ({sym}) — opcional
               </label>
               <input
                 id="edit-price"
                 type="number"
-                min={1}
+                min={0}
                 value={editGlobalPrice}
                 onChange={(e) => setEditGlobalPrice(Number(e.target.value))}
                 className="w-full px-3 py-2 text-sm font-mono-num bg-slate-50 dark:bg-[#0F141C] border border-slate-200 dark:border-slate-700 rounded-lg"
               />
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                Déjalo en cero mientras el presupuesto esté pendiente.
+              </p>
             </div>
             <div>
               <label htmlFor="edit-mechanic" className="block text-xs font-semibold mb-1">

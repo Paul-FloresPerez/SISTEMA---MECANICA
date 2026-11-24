@@ -928,7 +928,7 @@ export const INITIAL_SETTINGS: WorkshopSettings = {
   email: 'taller@zonaracing.pe',
   address: 'Av. República de Panamá 4120, Surquillo',
   city: 'Lima, Perú',
-  currencySymbol: '$',
+  currencySymbol: 'S/',
   workHours: 'Lun - Sáb · 08:30 a 19:00',
   lowStockAlertDefault: 5,
   theme: 'light',

@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Search, Wrench } from 'lucide-react';
 import { useWorkshop } from '../context/WorkshopContext';
-import { calculateRepairFinancials, formatCurrency, formatShortDate } from '../utils/calculations';
+import { calculateRepairFinancials, formatCurrency, formatRepairPrice, formatShortDate } from '../utils/calculations';
 import { RepairStatusText } from '../components/common/StatusDisplay';
 import { EmptyState } from '../components/common/EmptyState';
 import type { RepairStatus } from '../types/workshop';
@@ -180,7 +180,7 @@ export const RepairsPage: React.FC = () => {
                         <RepairStatusText status={repair.status} />
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono-num font-semibold text-slate-900 dark:text-white whitespace-nowrap">
-                        {formatCurrency(fin.globalPrice, sym)}
+                        {formatRepairPrice(fin.globalPrice, sym)}
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono-num text-slate-600 dark:text-slate-300 whitespace-nowrap">
                         {formatCurrency(fin.totalPaid, sym)}
@@ -235,7 +235,7 @@ export const RepairsPage: React.FC = () => {
                   </p>
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/70 text-xs">
                     <span className="text-slate-500 dark:text-slate-400">
-                      Total: <strong className="font-mono-num text-slate-900 dark:text-white">{formatCurrency(fin.globalPrice, sym)}</strong>
+                      Total: <strong className="font-mono-num text-slate-900 dark:text-white">{formatRepairPrice(fin.globalPrice, sym)}</strong>
                     </span>
                     <span className="text-slate-500 dark:text-slate-400">
                       Saldo:{' '}

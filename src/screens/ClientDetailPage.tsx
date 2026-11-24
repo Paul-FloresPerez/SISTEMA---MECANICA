@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Bike, Plus, Wrench, Phone, Mail, FileText } from 'lucide-react';
 import { useWorkshop } from '../context/WorkshopContext';
 import { BRAND_ASSETS } from '../mocks/seedData';
-import { calculateRepairFinancials, formatCurrency, formatShortDate } from '../utils/calculations';
+import { calculateRepairFinancials, formatCurrency, formatRepairPrice, formatShortDate, getCurrentYear } from '../utils/calculations';
 import { RepairStatusText } from '../components/common/StatusDisplay';
 import { ImageWithFallback } from '../components/common/ImageWithFallback';
 import { Modal } from '../components/common/Modal';
@@ -32,7 +32,7 @@ export const ClientDetailPage: React.FC = () => {
 
   const [brand, setBrand] = useState('');
   const [model, setModel] = useState('');
-  const [year, setYear] = useState(2024);
+  const [year, setYear] = useState(() => getCurrentYear());
   const [plate, setPlate] = useState('');
   const [cc, setCc] = useState(650);
   const [color, setColor] = useState('');
@@ -256,7 +256,7 @@ export const ClientDetailPage: React.FC = () => {
 
                   <div className="flex sm:flex-col items-end justify-between sm:justify-center gap-1 shrink-0">
                     <span className="font-mono-num text-sm font-bold text-slate-900 dark:text-white">
-                      {formatCurrency(fin.globalPrice, sym)}
+                      {formatRepairPrice(fin.globalPrice, sym)}
                     </span>
                     <span className="text-[11px] font-mono-num text-slate-500">
                       Saldo: {formatCurrency(fin.pendingBalance, sym)}

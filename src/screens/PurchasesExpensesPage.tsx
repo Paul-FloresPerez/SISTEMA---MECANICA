@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { PackagePlus, Receipt, Search, ShoppingBag } from 'lucide-react';
 import { useWorkshop } from '../context/WorkshopContext';
-import { formatCurrency, formatShortDate } from '../utils/calculations';
+import { formatCurrency, formatShortDate, getTodayIso } from '../utils/calculations';
 import {
   getPaymentMethodLabel,
   TransactionOriginText,
@@ -114,7 +114,7 @@ export const PurchasesExpensesPage: React.FC = () => {
       description: description.trim(),
       supplierOrPayee: supplier.trim() || 'Proveedor general',
       amount,
-      date: new Date().toISOString().slice(0, 10),
+      date: getTodayIso(),
       paymentMethod,
       relatedProductId: origin === 'compra_almacen' ? relatedProductId : undefined,
       quantity: origin === 'compra_almacen' ? quantity : undefined,

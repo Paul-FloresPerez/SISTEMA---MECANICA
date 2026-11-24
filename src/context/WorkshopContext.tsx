@@ -26,6 +26,7 @@ import type {
   SaleItem,
   WorkshopSettings,
 } from '../types/workshop';
+import { getCurrentYear, getTodayIso } from '../utils/calculations';
 
 interface ToastMessage {
   id: string;
@@ -117,15 +118,13 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const todayIso = () => new Date().toISOString().slice(0, 10);
-
   const addRepair: WorkshopContextValue['addRepair'] = (order) => {
     const num = 105 + repairs.length;
-    const now = todayIso();
+    const now = getTodayIso();
     const newOrder: RepairOrder = {
       ...order,
       id: `rep-${Date.now()}`,
-      code: `ZR-2026-${num}`,
+      code: `ZR-${getCurrentYear()}-${num}`,
       createdAt: now,
       updatedAt: now,
     };
@@ -167,14 +166,14 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const updateRepair: WorkshopContextValue['updateRepair'] = (id, patch) => {
     setRepairs((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, ...patch, updatedAt: todayIso() } : r))
+      prev.map((r) => (r.id === id ? { ...r, ...patch, updatedAt: getTodayIso() } : r))
     );
     notify('Orden actualizada', 'Los cambios de la reparación fueron guardados.');
   };
 
   const updateRepairStatus: WorkshopContextValue['updateRepairStatus'] = (id, status) => {
     setRepairs((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status, updatedAt: todayIso() } : r))
+      prev.map((r) => (r.id === id ? { ...r, status, updatedAt: getTodayIso() } : r))
     );
     notify('Estado actualizado', 'El estado de la motocicleta fue actualizado.');
   };
@@ -187,7 +186,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setRepairs((prev) =>
       prev.map((r) =>
         r.id === repairId
-          ? { ...r, payments: [...r.payments, newPayment], updatedAt: todayIso() }
+          ? { ...r, payments: [...r.payments, newPayment], updatedAt: getTodayIso() }
           : r
       )
     );
@@ -195,11 +194,11 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const completeSale: WorkshopContextValue['completeSale'] = (input) => {
-    const now = todayIso();
+    const now = getTodayIso();
     const num = 42 + sales.length;
     const newSale: Sale = {
       id: `sale-${Date.now()}`,
-      code: `V-2026-0${num}`,
+      code: `V-${getCurrentYear()}-0${num}`,
       date: now,
       customerName: input.customerName || 'Cliente Mostrador',
       customerId: input.customerId,
@@ -261,7 +260,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           previousStock: 0,
           newStock: created.stock,
           reason: 'Stock inicial al crear producto',
-          date: todayIso(),
+          date: getTodayIso(),
           user: 'Sofía Paredes',
         },
         ...prev,
@@ -313,7 +312,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       previousStock: target.stock,
       newStock,
       reason,
-      date: todayIso(),
+      date: getTodayIso(),
       user: 'Sofía Paredes',
     };
     setMovements((prev) => [movement, ...prev]);
@@ -325,7 +324,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const created: PurchaseOrExpense = {
       ...tx,
       id: `tx-${Date.now()}`,
-      code: `CG-2026-0${num}`,
+      code: `CG-${getCurrentYear()}-0${num}`,
     };
     setTransactions((prev) => [created, ...prev]);
 
@@ -348,7 +347,7 @@ export const WorkshopProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const created: Customer = {
       ...customer,
       id: `cust-${Date.now()}`,
-      createdAt: todayIso(),
+      createdAt: getTodayIso(),
     };
     setCustomers((prev) => [created, ...prev]);
     notify('Cliente registrado', `${created.name} añadido al directorio.`);

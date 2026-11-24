@@ -6,6 +6,7 @@ import {
   calculatePeriodReport,
   validateRepairDraft,
   formatCurrency,
+  formatRepairPrice,
 } from './calculations';
 import type { PurchaseOrExpense, RepairOrder, Sale } from '../types/workshop';
 
@@ -60,23 +61,20 @@ test('calculateCartTotals clamps discount to subtotal and computes estimated res
   assert.equal(clamped.total, 0);
 });
 
-test('validateRepairDraft rejects missing customer, motorcycle, short problem, or zero price', () => {
+test('validateRepairDraft requires vehicle data and problem, but allows a pending price', () => {
   const invalid = validateRepairDraft({
     customerId: '',
     motorcycleId: '',
     reportedProblem: 'abc',
-    globalPrice: 0,
   });
   assert.ok(invalid.customerId);
   assert.ok(invalid.motorcycleId);
   assert.ok(invalid.reportedProblem);
-  assert.ok(invalid.globalPrice);
 
   const valid = validateRepairDraft({
     customerId: 'c1',
     motorcycleId: 'm1',
     reportedProblem: 'Ruido metálico en cadena de distribución',
-    globalPrice: 180,
   });
   assert.deepEqual(valid, {});
 });
@@ -141,6 +139,8 @@ test('calculatePeriodReport computes totalIncome, operatingExpenses and estimate
 });
 
 test('formatCurrency formats positive and negative numbers cleanly', () => {
-  assert.equal(formatCurrency(1250.5, '$'), '$1,250.50');
+  assert.equal(formatCurrency(1250.5, 'S/'), 'S/1,250.50');
   assert.equal(formatCurrency(-45, 'S/'), '-S/45.00');
+  assert.equal(formatRepairPrice(0, 'S/'), 'Por definir');
+  assert.equal(formatRepairPrice(75, 'S/'), 'S/75.00');
 });

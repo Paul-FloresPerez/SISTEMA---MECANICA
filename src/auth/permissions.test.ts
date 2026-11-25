@@ -10,4 +10,9 @@ test('roles grant only their intended permissions', () => {
   assert.equal(hasPermission('mechanic', 'payments:write'), false);
   assert.equal(hasPermission('cashier', 'cash:write'), true);
   assert.equal(hasPermission('cashier', 'repairs:write'), false);
+  assert.equal(hasPermission('mechanic', 'customers:write'), true);
+  assert.equal(hasPermission('mechanic', 'motorcycles:write'), true);
+  assert.equal(hasPermission('cashier', 'inventory:read'), true);
+  assert.equal(hasPermission('cashier', 'repairs:read'), true);
+  assert.equal(hasPermission('workshop_manager', 'cash:write'), true);
 });

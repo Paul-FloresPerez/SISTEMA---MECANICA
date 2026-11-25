@@ -5,10 +5,11 @@ import { Building2, CreditCard, Palette, Users, Check, Plus } from 'lucide-react
 import { useWorkshop } from '../context/WorkshopContext';
 import { Modal } from '../components/common/Modal';
 import type { TeamMember } from '../types/workshop';
+import { UsersSettings } from './UsersSettings';
 
 type SettingsTab = 'taller' | 'pagos' | 'apariencia' | 'usuarios';
 
-export const SettingsPage: React.FC = () => {
+export const SettingsPage: React.FC<{ users: { id: string; name: string; username: string; email: string | null; role: 'admin' | 'workshop_manager' | 'mechanic' | 'cashier'; active: boolean }[]; canManageUsers: boolean }> = ({ users, canManageUsers }) => {
   const { settings, updateSettings, toggleTheme } = useWorkshop();
   const [tab, setTab] = useState<SettingsTab>('taller');
 
@@ -89,7 +90,7 @@ export const SettingsPage: React.FC = () => {
               { id: 'taller', label: 'Perfil del taller', Icon: Building2 },
               { id: 'pagos', label: 'Métodos de pago', Icon: CreditCard },
               { id: 'apariencia', label: 'Preferencias y apariencia', Icon: Palette },
-              { id: 'usuarios', label: 'Equipo (visual)', Icon: Users },
+              ...(canManageUsers ? [{ id: 'usuarios' as const, label: 'Equipo', Icon: Users }] : []),
             ] as { id: SettingsTab; label: string; Icon: React.ComponentType<{ className?: string }> }[]
           ).map(({ id, label, Icon }) => (
             <button
@@ -326,7 +327,8 @@ export const SettingsPage: React.FC = () => {
         </section>
       )}
 
-      {tab === 'usuarios' && (
+      {tab === 'usuarios' && canManageUsers && <UsersSettings users={users} />}
+      {false && tab === 'usuarios' && (
         <section className="bg-white dark:bg-[#131822] border border-slate-200 dark:border-slate-800 rounded-xl p-5 lg:p-6 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>

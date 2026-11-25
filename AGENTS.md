@@ -7,3 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Interfaz visual
+
+Para cualquier cambio de interfaz, consultar y cumplir `docs/design-system.md`. Conservar la identidad visual, componentes y patrones existentes salvo que el usuario solicite explícitamente un rediseño. Verificar los estados y tamaños afectados.

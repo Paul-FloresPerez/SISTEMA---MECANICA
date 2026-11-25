@@ -3,13 +3,14 @@ import { verify } from '@node-rs/argon2';
 import { and, eq } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 import { dbTx } from '@/src/db/client';
-import { memberships, userCredentials, users, workshops } from '@/src/db/schema';
-import { createSession, revokeSession } from '@/src/auth/session';
+import { memberships, sessions, userCredentials, users, workshops } from '@/src/db/schema';
+import { hashToken, newSessionToken, setSessionCookie, revokeSession } from '@/src/auth/session';
 
 export async function login(_state: string, formData: FormData): Promise<string> {
   const username = String(formData.get('username') ?? '').trim().toLowerCase();
   const password = String(formData.get('password') ?? '');
   if (!/^[a-z0-9][a-z0-9._-]{2,63}$/.test(username) || !password || password.length > 1024) return 'Usuario o contraseña incorrectos.';
+  const { token, expiresAt } = newSessionToken();
   const identity = await dbTx.transaction(async (tx) => {
     const rows = await tx.select({ userId: users.id, active: users.isActive, hash: userCredentials.passwordHash, attempts: userCredentials.failedAttempts, lockedUntil: userCredentials.lockedUntil, organizationId: memberships.organizationId, workshopId: memberships.workshopId })
       .from(userCredentials).innerJoin(users, eq(users.id, userCredentials.userId))
@@ -26,10 +27,11 @@ export async function login(_state: string, formData: FormData): Promise<string>
       return null;
     }
     await tx.update(userCredentials).set({ failedAttempts: 0, lockedUntil: null }).where(eq(userCredentials.userId, row.userId));
+    await tx.insert(sessions).values({ userId: row.userId, organizationId: row.organizationId, workshopId: row.workshopId, tokenHash: hashToken(token), expiresAt });
     return { userId: row.userId, organizationId: row.organizationId, workshopId: row.workshopId };
   });
   if (!identity) return 'Usuario o contraseña incorrectos, o acceso temporalmente bloqueado.';
-  await createSession(identity.userId, identity.organizationId, identity.workshopId);
+  await setSessionCookie(token, expiresAt);
   redirect('/');
 }
 

@@ -11,3 +11,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## Interfaz visual
 
 Para cualquier cambio de interfaz, consultar y cumplir `docs/design-system.md`. Conservar la identidad visual, componentes y patrones existentes salvo que el usuario solicite explícitamente un rediseño. Verificar los estados y tamaños afectados.
+
+## Protocolo de desarrollo
+
+- Cada implementación debe concluir con sus pruebas funcionales, compilación y comprobación de tipos.
+- Cada implementación terminada y validada debe contar con un commit descriptivo y `git push` a `develop`.
+- Al finalizar, informar el hash del commit, los archivos modificados, las funcionalidades implementadas, las pruebas ejecutadas y los pendientes.
+- No publicar implementaciones incompletas como funcionales ni subir credenciales, archivos sensibles o cambios ajenos a la tarea.
+- No realizar merge a `main` sin autorización del usuario.

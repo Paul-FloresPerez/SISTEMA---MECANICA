@@ -18,6 +18,7 @@ import {
   Sun,
   Moon,
   MoreHorizontal,
+  UserCircle,
 } from 'lucide-react';
 import { useWorkshop } from '../context/WorkshopContext';
 import { BRAND_ASSETS } from '../mocks/seedData';
@@ -41,6 +42,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/clientes', label: 'Clientes y motos', shortLabel: 'Clientes', icon: Users },
   { to: '/reportes', label: 'Reportes', shortLabel: 'Reportes', icon: BarChart3 },
   { to: '/configuracion', label: 'Configuración', shortLabel: 'Ajustes', icon: Settings },
+  { to: '/mi-cuenta', label: 'Mi cuenta', shortLabel: 'Cuenta', icon: UserCircle },
 ];
 
 const ROUTE_TITLES: { match: string; title: string; subtitle: string }[] = [
@@ -54,6 +56,7 @@ const ROUTE_TITLES: { match: string; title: string; subtitle: string }[] = [
   { match: '/clientes', title: 'Clientes y motocicletas', subtitle: 'Directorio de pilotos y unidades' },
   { match: '/reportes', title: 'Estadísticas y reportes', subtitle: 'Ingresos, costos y resultado estimado' },
   { match: '/configuracion', title: 'Configuración', subtitle: 'Datos del taller, pagos y equipo' },
+  { match: '/mi-cuenta', title: 'Mi cuenta', subtitle: 'Datos y seguridad de tu cuenta' },
   { match: '/', title: 'Inicio / Dashboard', subtitle: 'Resumen diario y operativo del taller' },
 ];
 

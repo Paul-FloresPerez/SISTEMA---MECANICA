@@ -1,10 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Building2, CreditCard, Palette, Users, Check, Plus } from 'lucide-react';
+import { Building2, CreditCard, Palette, Users, Check } from 'lucide-react';
 import { useWorkshop } from '../context/WorkshopContext';
-import { Modal } from '../components/common/Modal';
-import type { TeamMember } from '../types/workshop';
 import { UsersSettings } from './UsersSettings';
 
 type SettingsTab = 'taller' | 'pagos' | 'apariencia' | 'usuarios';
@@ -22,12 +20,6 @@ export const SettingsPage: React.FC<{ users: { id: string; name: string; usernam
   const [city, setCity] = useState(settings.city);
   const [workHours, setWorkHours] = useState(settings.workHours);
   const [currencySymbol, setCurrencySymbol] = useState(settings.currencySymbol);
-
-  const [userModalOpen, setUserModalOpen] = useState(false);
-  const [memberName, setMemberName] = useState('');
-  const [memberEmail, setMemberEmail] = useState('');
-  const [memberRole, setMemberRole] = useState<TeamMember['role']>('Mecánico');
-  const [memberSpecialty, setMemberSpecialty] = useState('');
 
   const handleSaveWorkshop = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,30 +42,6 @@ export const SettingsPage: React.FC<{ users: { id: string; name: string; usernam
         m.id === id ? { ...m, enabled: !m.enabled } : m
       ),
     });
-  };
-
-  const toggleMemberActive = (id: string) => {
-    updateSettings({
-      team: settings.team.map((u) => (u.id === id ? { ...u, active: !u.active } : u)),
-    });
-  };
-
-  const handleAddMember = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!memberName.trim() || !memberEmail.trim()) return;
-    const newMember: TeamMember = {
-      id: `usr-${Date.now()}`,
-      name: memberName.trim(),
-      email: memberEmail.trim(),
-      role: memberRole,
-      specialty: memberSpecialty.trim() || 'Mantenimiento general',
-      active: true,
-    };
-    updateSettings({ team: [...settings.team, newMember] });
-    setMemberName('');
-    setMemberEmail('');
-    setMemberSpecialty('');
-    setUserModalOpen(false);
   };
 
   return (
@@ -328,140 +296,6 @@ export const SettingsPage: React.FC<{ users: { id: string; name: string; usernam
       )}
 
       {tab === 'usuarios' && canManageUsers && <UsersSettings users={users} />}
-      {false && tab === 'usuarios' && (
-        <section className="bg-white dark:bg-[#131822] border border-slate-200 dark:border-slate-800 rounded-xl p-5 lg:p-6 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-                Gestión visual de usuarios y mecánicos
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Directorio visual del personal (sin autenticación ni credenciales reales).
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setUserModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg"
-            >
-              <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-              Agregar integrante
-            </button>
-          </div>
-
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-            {settings.team.map((member) => (
-              <li
-                key={member.id}
-                className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-              >
-                <div>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">
-                    {member.name} · <span className="text-rose-600 dark:text-rose-400">{member.role}</span>
-                  </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    {member.email} · {member.specialty}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => toggleMemberActive(member.id)}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg self-start sm:self-auto ${
-                    member.active
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  {member.active ? 'Activo' : 'Inactivo'}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <Modal
-        open={userModalOpen}
-        onClose={() => setUserModalOpen(false)}
-        title="Agregar integrante al equipo"
-        subtitle="Solo registro visual de demostración (sin acceso por contraseña)"
-      >
-        <form onSubmit={handleAddMember} className="space-y-4">
-          <div>
-            <label htmlFor="usr-name" className="block text-xs font-semibold mb-1">
-              Nombre completo
-            </label>
-            <input
-              id="usr-name"
-              type="text"
-              required
-              value={memberName}
-              onChange={(e) => setMemberName(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-[#0F141C] border border-slate-200 dark:border-slate-700 rounded-lg"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="usr-role" className="block text-xs font-semibold mb-1">
-                Rol
-              </label>
-              <select
-                id="usr-role"
-                value={memberRole}
-                onChange={(e) => setMemberRole(e.target.value as TeamMember['role'])}
-                className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-[#0F141C] border border-slate-200 dark:border-slate-700 rounded-lg"
-              >
-                <option value="Mecánico">Mecánico</option>
-                <option value="Jefe de Taller">Jefe de Taller</option>
-                <option value="Ventas / Caja">Ventas / Caja</option>
-                <option value="Administrador">Administrador</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="usr-email" className="block text-xs font-semibold mb-1">
-                Correo
-              </label>
-              <input
-                id="usr-email"
-                type="email"
-                required
-                value={memberEmail}
-                onChange={(e) => setMemberEmail(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-[#0F141C] border border-slate-200 dark:border-slate-700 rounded-lg"
-              />
-            </div>
-          </div>
-          <div>
-            <label htmlFor="usr-spec" className="block text-xs font-semibold mb-1">
-              Especialidad
-            </label>
-            <input
-              id="usr-spec"
-              type="text"
-              value={memberSpecialty}
-              onChange={(e) => setMemberSpecialty(e.target.value)}
-              placeholder="Ej. Inyección electrónica y frenos ABS"
-              className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-[#0F141C] border border-slate-200 dark:border-slate-700 rounded-lg"
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setUserModalOpen(false)}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 rounded-lg"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg"
-            >
-              Agregar integrante
-            </button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 };

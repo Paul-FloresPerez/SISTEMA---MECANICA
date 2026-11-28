@@ -12,7 +12,7 @@ export async function login(_state: string, formData: FormData): Promise<string>
   if (!/^[a-z0-9][a-z0-9._-]{2,63}$/.test(username) || !password || password.length > 1024) return 'Usuario o contraseña incorrectos.';
   const { token, expiresAt } = newSessionToken();
   const identity = await dbTx.transaction(async (tx) => {
-    const rows = await tx.select({ userId: users.id, active: users.isActive, hash: userCredentials.passwordHash, attempts: userCredentials.failedAttempts, lockedUntil: userCredentials.lockedUntil, organizationId: memberships.organizationId, workshopId: memberships.workshopId })
+    const rows = await tx.select({ userId: users.id, active: users.isActive, hash: userCredentials.passwordHash, mustChangePassword: userCredentials.mustChangePassword, attempts: userCredentials.failedAttempts, lockedUntil: userCredentials.lockedUntil, organizationId: memberships.organizationId, workshopId: memberships.workshopId })
       .from(userCredentials).innerJoin(users, eq(users.id, userCredentials.userId))
       .innerJoin(memberships, and(eq(memberships.userId, users.id), eq(memberships.isActive, true)))
       .innerJoin(workshops, and(eq(workshops.id, memberships.workshopId), eq(workshops.organizationId, memberships.organizationId), eq(workshops.isActive, true)))
@@ -28,11 +28,11 @@ export async function login(_state: string, formData: FormData): Promise<string>
     }
     await tx.update(userCredentials).set({ failedAttempts: 0, lockedUntil: null }).where(eq(userCredentials.userId, row.userId));
     await tx.insert(sessions).values({ userId: row.userId, organizationId: row.organizationId, workshopId: row.workshopId, tokenHash: hashToken(token), expiresAt });
-    return { userId: row.userId, organizationId: row.organizationId, workshopId: row.workshopId };
+    return { mustChangePassword: row.mustChangePassword };
   });
   if (!identity) return 'Usuario o contraseña incorrectos, o acceso temporalmente bloqueado.';
   await setSessionCookie(token, expiresAt);
-  redirect('/');
+  redirect(identity.mustChangePassword ? '/cambiar-contrasena' : '/');
 }
 
 export async function logout() {

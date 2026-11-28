@@ -102,6 +102,7 @@ export const users = pgTable('users', {
 export const userCredentials = pgTable('user_credentials', {
   userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
   passwordHash: text('password_hash').notNull(),
+  mustChangePassword: boolean('must_change_password').notNull().default(false),
   passwordChangedAt: timestamp('password_changed_at', { withTimezone: true }).notNull().defaultNow(),
   failedAttempts: integer('failed_attempts').notNull().default(0),
   lockedUntil: timestamp('locked_until', { withTimezone: true }),

@@ -26,7 +26,7 @@ export async function changePasswordForSession(session: NonNullable<Awaited<Retu
       await tx.update(userCredentials).set({ failedAttempts: attempts >= 5 ? 0 : attempts, lockedUntil: attempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null }).where(eq(userCredentials.userId, session.userId));
       return false;
     }
-    await tx.update(userCredentials).set({ passwordHash: newHash, passwordChangedAt: new Date(), failedAttempts: 0, lockedUntil: null }).where(eq(userCredentials.userId, session.userId));
+    await tx.update(userCredentials).set({ passwordHash: newHash, mustChangePassword: false, passwordChangedAt: new Date(), failedAttempts: 0, lockedUntil: null }).where(eq(userCredentials.userId, session.userId));
     await tx.update(sessions).set({ revokedAt: new Date() }).where(and(eq(sessions.userId, session.userId), ne(sessions.id, session.sessionId), isNull(sessions.revokedAt)));
     await tx.insert(auditLogs).values({ organizationId: session.organizationId, workshopId: session.workshopId, actorUserId: session.userId, action: 'user.password_changed', entityType: 'user', entityId: session.userId });
     return true;

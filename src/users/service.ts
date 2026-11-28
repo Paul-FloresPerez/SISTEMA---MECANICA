@@ -1,14 +1,39 @@
 import 'server-only';
 import { hash } from '@node-rs/argon2';
-import { and, eq, sql, isNull } from 'drizzle-orm';
+import { and, eq, sql, isNull, gt } from 'drizzle-orm';
 import { requirePermission } from '../auth/authorization';
 import { isValidPassword } from '../auth/password-policy';
+import { getSession } from '../auth/session';
 import { dbQuery, dbTx } from '../db/client';
 import { auditLogs, memberships, organizations, sessions, userCredentials, users } from '../db/schema';
 
 export async function listUsers() {
   const session = await requirePermission('settings:manage');
   return dbQuery.select({ id: users.id, name: users.fullName, username: users.username, email: users.email, role: memberships.role, active: sql<boolean>`${memberships.isActive} AND ${users.isActive}` }).from(memberships).innerJoin(users, eq(users.id, memberships.userId)).where(and(eq(memberships.organizationId, session.organizationId), eq(memberships.workshopId, session.workshopId))).orderBy(users.fullName);
+}
+
+export async function resetUserPassword(id: unknown, password: unknown) {
+  const session = await requirePermission('settings:manage');
+  return resetUserPasswordForSession(session, id, password);
+}
+
+/** The authenticated actor is revalidated and locked within the transaction. */
+export async function resetUserPasswordForSession(session: NonNullable<Awaited<ReturnType<typeof getSession>>>, id: unknown, password: unknown) {
+  if (typeof id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) || id === session.userId || !isValidPassword(password)) throw new Error('Datos inválidos.');
+  const passwordHash = await hash(password, { algorithm: 2, memoryCost: 19456, timeCost: 2, parallelism: 1 });
+  await dbTx.transaction(async tx => {
+    await tx.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, session.organizationId)).for('update');
+    const [actor] = await tx.select({ id: sessions.id }).from(sessions).innerJoin(users, and(eq(users.id, sessions.userId), eq(users.isActive, true))).innerJoin(userCredentials, and(eq(userCredentials.userId, users.id), eq(userCredentials.mustChangePassword, false))).innerJoin(memberships, and(eq(memberships.userId, users.id), eq(memberships.organizationId, session.organizationId), eq(memberships.workshopId, session.workshopId), eq(memberships.role, 'admin'), eq(memberships.isActive, true))).where(and(eq(sessions.id, session.sessionId), eq(sessions.userId, session.userId), eq(sessions.organizationId, session.organizationId), eq(sessions.workshopId, session.workshopId), isNull(sessions.revokedAt), gt(sessions.expiresAt, new Date()))).for('update', { of: sessions });
+    if (!actor) throw new Error('Sin autorización.');
+    const [target] = await tx.select({ id: memberships.id }).from(memberships).where(and(eq(memberships.organizationId, session.organizationId), eq(memberships.workshopId, session.workshopId), eq(memberships.userId, id))).limit(1);
+    if (!target) throw new Error('Usuario no encontrado.');
+    const affiliations = await tx.select({ id: memberships.id }).from(memberships).where(eq(memberships.userId, id)).limit(2);
+    if (affiliations.length !== 1) throw new Error('No se puede restablecer una cuenta compartida.');
+    const changed = await tx.update(userCredentials).set({ passwordHash, mustChangePassword: true, passwordChangedAt: new Date(), failedAttempts: 0, lockedUntil: null }).where(eq(userCredentials.userId, id)).returning({ id: userCredentials.userId });
+    if (!changed.length) throw new Error('Credenciales no encontradas.');
+    await tx.update(sessions).set({ revokedAt: new Date() }).where(and(eq(sessions.userId, id), isNull(sessions.revokedAt)));
+    await tx.insert(auditLogs).values({ organizationId: session.organizationId, workshopId: session.workshopId, actorUserId: session.userId, action: 'user.password_reset', entityType: 'user', entityId: id });
+  });
 }
 
 export async function updateUser(input: { id: string; name: string; email: string; role: string; active: boolean }) {
@@ -48,8 +73,11 @@ export async function createUser(input: { name: string; username: string; email:
   if (name.length < 2 || name.length > 160 || !/^[a-z0-9][a-z0-9._-]{2,63}$/.test(username) || email.length > 320 || (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) || !isValidPassword(input.password) || !roles.includes(input.role as typeof roles[number])) throw new Error('Datos inválidos.');
   const passwordHash = await hash(input.password, { algorithm: 2, memoryCost: 19456, timeCost: 2, parallelism: 1 });
   await dbTx.transaction(async tx => {
+    await tx.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, session.organizationId)).for('update');
+    const [actor] = await tx.select({ id: sessions.id }).from(sessions).innerJoin(users, and(eq(users.id, sessions.userId), eq(users.isActive, true))).innerJoin(userCredentials, and(eq(userCredentials.userId, users.id), eq(userCredentials.mustChangePassword, false))).innerJoin(memberships, and(eq(memberships.userId, users.id), eq(memberships.organizationId, session.organizationId), eq(memberships.workshopId, session.workshopId), eq(memberships.role, 'admin'), eq(memberships.isActive, true))).where(and(eq(sessions.id, session.sessionId), eq(sessions.userId, session.userId), eq(sessions.organizationId, session.organizationId), eq(sessions.workshopId, session.workshopId), isNull(sessions.revokedAt), gt(sessions.expiresAt, new Date()))).for('update', { of: sessions });
+    if (!actor) throw new Error('Sin autorización.');
     const [user] = await tx.insert(users).values({ fullName: name, username, email: email || null }).returning({ id: users.id });
-    await tx.insert(userCredentials).values({ userId: user.id, passwordHash });
+    await tx.insert(userCredentials).values({ userId: user.id, passwordHash, mustChangePassword: true });
     await tx.insert(memberships).values({ userId: user.id, organizationId: session.organizationId, workshopId: session.workshopId, role: input.role as typeof roles[number] });
     await tx.insert(auditLogs).values({ organizationId: session.organizationId, workshopId: session.workshopId, actorUserId: session.userId, action: 'user.created', entityType: 'user', entityId: user.id });
   });

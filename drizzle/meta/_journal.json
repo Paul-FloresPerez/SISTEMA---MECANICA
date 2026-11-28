@@ -29,6 +29,13 @@
       "when": 1795562825512,
       "tag": "0003_confused_genesis",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795893210587,
+      "tag": "0004_funny_northstar",
+      "breakpoints": true
     }
   ]
 }

@@ -8,5 +8,5 @@ export default async function TallerLayout({ children }: { children: React.React
   const session = await getSession();
   if (!session) redirect('/login');
   if (session.mustChangePassword) redirect('/cambiar-contrasena');
-  return <WorkshopProvider><MainLayout>{children}</MainLayout></WorkshopProvider>;
+  return <WorkshopProvider><MainLayout role={session.role}>{children}</MainLayout></WorkshopProvider>;
 }

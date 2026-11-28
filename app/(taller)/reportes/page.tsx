@@ -1,5 +1,7 @@
+import { requireRoute } from '@/src/auth/authorization';
 import { ReportsPage } from '@/src/screens/ReportsPage';
 
-export default function Page() {
+export default async function Page() {
+  await requireRoute('/reportes');
   return <ReportsPage />;
 }

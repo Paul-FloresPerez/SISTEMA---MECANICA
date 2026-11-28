@@ -1,5 +1,7 @@
+import { requireRoute } from '@/src/auth/authorization';
 import { NewRepairPage } from '@/src/screens/NewRepairPage';
 
-export default function Page() {
+export default async function Page() {
+  await requireRoute('/reparaciones/nueva');
   return <NewRepairPage />;
 }

@@ -25,6 +25,8 @@ import { BRAND_ASSETS } from '../mocks/seedData';
 import { ImageWithFallback } from '../components/common/ImageWithFallback';
 import { ToastContainer } from '../components/common/ToastContainer';
 import { logout } from '../../app/login/actions';
+import { hasPermission, type Role } from '../auth/permissions';
+import { canAccessRoute } from '../auth/route-policy';
 
 interface NavItem {
   to: string;
@@ -60,7 +62,7 @@ const ROUTE_TITLES: { match: string; title: string; subtitle: string }[] = [
   { match: '/', title: 'Inicio / Dashboard', subtitle: 'Resumen diario y operativo del taller' },
 ];
 
-export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const MainLayout: React.FC<{ children: React.ReactNode; role: Role }> = ({ children, role }) => {
   const { settings, toggleTheme, repairs } = useWorkshop();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -76,6 +78,10 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
   ).length;
 
   const isRepairsRoute = pathname.startsWith('/reparaciones');
+  const navItems = NAV_ITEMS.filter((item) => canAccessRoute(role, item.to));
+  const canUseQuickAction = isRepairsRoute
+    ? canAccessRoute(role, '/reparaciones/nueva')
+    : hasPermission(role, 'sales:write') && canAccessRoute(role, '/ventas');
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-[#F5F6F8] dark:bg-[#0B0E14] text-slate-900 dark:text-slate-100">
@@ -103,7 +109,7 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             return (
               <Link
@@ -203,7 +209,7 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
               )}
             </button>
 
-            {!pathname.startsWith('/reparaciones/nueva') && (
+            {!pathname.startsWith('/reparaciones/nueva') && canUseQuickAction && (
               <button
                 type="button"
                 onClick={() =>
@@ -234,7 +240,7 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
         aria-label="Navegación móvil inferior"
         className="lg:hidden fixed bottom-0 left-0 right-0 z-30 h-14 bg-white/95 dark:bg-[#131822]/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 grid grid-cols-5 items-center"
       >
-        {NAV_ITEMS.slice(0, 4).map((item) => {
+        {navItems.slice(0, 4).map((item) => {
           const Icon = item.icon;
           return (
             <Link
@@ -303,7 +309,7 @@ export const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }
             </div>
 
             <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-              {NAV_ITEMS.map((item) => {
+              {navItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <Link

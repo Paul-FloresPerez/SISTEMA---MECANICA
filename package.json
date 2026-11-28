@@ -9,7 +9,7 @@
     "start": "next start --hostname 0.0.0.0",
     "clean": "rm -rf .next",
     "lint": "tsc --noEmit",
-    "test": "tsx --test src/utils/calculations.test.ts src/auth/permissions.test.ts src/auth/password-policy.test.ts",
+    "test": "tsx --test src/utils/calculations.test.ts src/auth/permissions.test.ts src/auth/route-policy.test.ts src/auth/password-policy.test.ts",
     "db:generate": "drizzle-kit generate",
     "db:check": "drizzle-kit check",
     "db:verify:postgres": "node scripts/verify-db-integrity.mjs",

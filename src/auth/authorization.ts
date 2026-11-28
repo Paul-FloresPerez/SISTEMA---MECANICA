@@ -1,6 +1,16 @@
 import 'server-only';
 import { getSession } from './session';
 import { hasPermission, type Permission } from './permissions';
+import { canAccessRoute } from './route-policy';
+import { redirect } from 'next/navigation';
+
+export async function requireRoute(pathname: string) {
+  const session = await getSession();
+  if (!session) redirect('/login');
+  if (session.mustChangePassword) redirect('/cambiar-contrasena');
+  if (!canAccessRoute(session.role, pathname)) redirect('/mi-cuenta');
+  return session;
+}
 
 export async function requirePermission(permission: Permission) {
   const session = await getSession();

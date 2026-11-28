@@ -1,9 +1,7 @@
-import { redirect } from 'next/navigation';
-import { getSession } from '@/src/auth/session';
+import { requireRoute } from '@/src/auth/authorization';
 import { AccountPage } from '@/src/screens/AccountPage';
 
 export default async function Page() {
-  const session = await getSession();
-  if (!session) redirect('/login');
+  const session = await requireRoute('/mi-cuenta');
   return <AccountPage name={session.name} role={session.role} />;
 }

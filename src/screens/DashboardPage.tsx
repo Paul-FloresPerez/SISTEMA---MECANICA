@@ -1,5 +1,8 @@
 'use client';
 
+import { canAccessRoute } from '../auth/route-policy';
+import { hasPermission, type Role } from '../auth/permissions';
+
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -36,7 +39,7 @@ import { RepairStatusText } from '../components/common/StatusDisplay';
 
 type DateScope = 'hoy' | '7d' | 'mes' | 'todo';
 
-export const DashboardPage: React.FC = () => {
+export const DashboardPage: React.FC<{ role: Role }> = ({ role }) => {
   const { repairs, sales, transactions, products, customers, motorcycles, settings } =
     useWorkshop();
   const router = useRouter();
@@ -167,6 +170,7 @@ export const DashboardPage: React.FC = () => {
 
         {/* Quick Shortcuts */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+          {canAccessRoute(role, '/reparaciones/nueva') && (
           <button
             type="button"
             onClick={() => router.push('/reparaciones/nueva')}
@@ -175,6 +179,8 @@ export const DashboardPage: React.FC = () => {
             <Wrench className="w-3.5 h-3.5 text-rose-600" aria-hidden="true" />
             Nueva reparación
           </button>
+          )}
+          {hasPermission(role, 'sales:write') && canAccessRoute(role, '/ventas') && (
           <button
             type="button"
             onClick={() => router.push('/ventas')}
@@ -183,6 +189,8 @@ export const DashboardPage: React.FC = () => {
             <ShoppingCart className="w-3.5 h-3.5 text-rose-600" aria-hidden="true" />
             Abrir POS
           </button>
+          )}
+          {hasPermission(role, 'purchases:write') && canAccessRoute(role, '/compras-gastos') && (
           <button
             type="button"
             onClick={() => router.push('/compras-gastos')}
@@ -191,6 +199,7 @@ export const DashboardPage: React.FC = () => {
             <Receipt className="w-3.5 h-3.5 text-rose-600" aria-hidden="true" />
             Registrar gasto
           </button>
+          )}
         </div>
       </div>
 

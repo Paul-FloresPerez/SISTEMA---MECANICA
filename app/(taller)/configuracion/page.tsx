@@ -1,11 +1,9 @@
 import { SettingsPage } from '@/src/screens/SettingsPage';
-import { getSession } from '@/src/auth/session';
+import { requireRoute } from '@/src/auth/authorization';
 import { listUsers } from '@/src/users/service';
-import { redirect } from 'next/navigation';
 
 export default async function Page() {
-  const session = await getSession();
-  if (!session || session.mustChangePassword || session.role !== 'admin') redirect('/');
+  const session = await requireRoute('/configuracion');
   const canManageUsers = session?.role === 'admin';
   const users = canManageUsers ? await listUsers() : [];
   return <SettingsPage users={users} canManageUsers={canManageUsers} />;

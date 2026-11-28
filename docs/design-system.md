@@ -21,3 +21,5 @@ La implementación existente es la referencia visual. En nuevas pantallas y camb
 ## Comprobación para futuros cambios
 
 Comprobar la pantalla y sus controles en escritorio y móvil, en claro y oscuro, incluyendo contenido real, vacío, carga, errores y confirmaciones cuando correspondan. Mantener etiquetas, foco de teclado, mensajes accesibles y controles utilizables en pantallas táctiles. Los módulos aún simulados deben identificarse como tales y no presentarse como datos persistentes.
+
+La política de rutas y navegación constituye una protección parcial: queda pendiente restringir los datos simulados, incluidos importes, costos y rentabilidad, según los permisos de cada rol. No debe considerarse que ocultar una ruta protege esos datos.

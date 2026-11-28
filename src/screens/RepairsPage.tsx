@@ -11,7 +11,7 @@ import type { RepairStatus } from '../types/workshop';
 
 type StatusTab = 'todas' | 'activas' | RepairStatus;
 
-export const RepairsPage: React.FC = () => {
+export const RepairsPage: React.FC<{ canCreate: boolean }> = ({ canCreate }) => {
   const { repairs, customers, motorcycles, settings } = useWorkshop();
   const router = useRouter();
   const [search, setSearch] = useState('');
@@ -69,6 +69,7 @@ export const RepairsPage: React.FC = () => {
           />
         </div>
 
+        {canCreate && (
         <button
           type="button"
           onClick={() => router.push('/reparaciones/nueva')}
@@ -77,6 +78,7 @@ export const RepairsPage: React.FC = () => {
           <Plus className="w-4 h-4" aria-hidden="true" />
           Nueva reparación
         </button>
+        )}
       </div>
 
       {/* Status Filter Tabs */}
@@ -118,8 +120,7 @@ export const RepairsPage: React.FC = () => {
           icon={Wrench}
           title="No hay reparaciones con ese criterio"
           description="Ajusta el buscador o registra una nueva orden de servicio para ingresar una motocicleta al taller."
-          actionLabel="Registrar reparación"
-          onAction={() => router.push('/reparaciones/nueva')}
+          {...(canCreate ? { actionLabel: "Registrar reparación", onAction: () => router.push('/reparaciones/nueva') } : {})}
         />
       ) : (
         <div className="bg-white dark:bg-[#131822] border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
